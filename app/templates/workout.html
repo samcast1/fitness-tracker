@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Workout Session</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/static/manifest.json">
+    <style>
+        body {
+            padding-top: 60px;
+            background-color: #f8f9fa;
+            touch-action: manipulation;
+            padding-bottom: 80px; /* Space for bottom controls */
+        }
+        .navbar {
+            background-color: #212529;
+        }
+        .exercise-card {
+            margin-bottom: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .exercise-header {
+            background-color: #007bff;
+            color: white;
+            border-radius: 10px 10px 0 0;
+            padding: 10px 15px;
+        }
+        .timer-display {
+            font-size: 3.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        .control-btn {
+            width: 100%;
+            height: 60px;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            border-radius: 30px;
+        }
+        .rep-counter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .rep-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rep-count {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 15px;
+            width: 80px;
+            text-align: center;
+        }
+        .bottom-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            padding: 10px 15px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        /* Make cards larger and text more readable on mobile */
+        .card-body {
+            padding: 20px;
+        }
+        .form-control, .form-select {
+            height: 50px;
+            font-size: 1.1rem;
+        }
+        /* Prevent text selection during taps */
+        * {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        input, textarea {
+            -webkit-user-select: auto;
+            user-select: auto;
+        }
+        /* Improve tap target sizes */
+        .nav-link, button, .form-control, .form-select {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        .next-up {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border-left: 4px solid #007bff;
+        }
+        .completed {
+            opacity: 0.6;
+        }
+        /* Audio controls */
+        .audio-control {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .audio-control button {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Fitness Tracker</a>
+            <div class="ms-auto">
+                <button id="endWorkoutBtn" class="btn btn-outline-light">End Session</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="timer-display" id="timer">00:00:00</div>
+                <div class="d-flex justify-content-center mb-4">
+                    <button class="btn btn-primary me-2" id="startBtn">Start</button>
+                    <button class="btn btn-warning me-2" id="pauseBtn" disabled>Pause</button>
+                    <button class="btn btn-success" id="resumeBtn" disabled>Resume</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card exercise-card">
+                    <div class="exercise-header">
+                        <h4 class="mb-0">Current Exercise</h4>
+                    </div>
+                    <div class="card-body">
+                        <h3 id="currentExerciseName">Bench Press</h3>
+                        <p class="text-muted" id="currentExerciseDesc">3 sets x 10 reps, 60kg</p>
+                        
+                        <div class="rep-counter">
+                            <button class="btn btn-outline-primary rep-btn" id="decreaseReps">-</button>
+                            <div class="rep-count" id="repCount">0</div>
+                            <button class="btn btn-primary rep-btn" id="increaseReps">+</button>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-3">
+                            <div>
+                                <label class="form-label">Weight</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="weightInput" value="60">
+                                    <span class="input-group-text">kg</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Set</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Set</span>
+                                    <input type="number" class="form-control" id="setInput" value="1" readonly>
+                                    <span class="input-group-text">of 3</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="audio-control">
+                            <button class="btn btn-outline-secondary" id="hearInstructions">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-volume-up" viewBox="0 0 16 16">
+                                    <path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-.708.707A7.48 7.48 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303l.708.707z"/>
+                                    <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.48 5.48 0 0 1 11.025 8a5.48 5.48 0 0 1-1.61 3.89l.706.706z"/>
+                                    <path d="M8.707 11.182A4.5 4.5 0 0 0 10.025 8a4.5 4.5 0 0 0-1.318-3.182l-.707.707A3.5 3.5 0 0 1 9.025 8a3.5 3.5 0 0 1-1.025 2.475l.707.707z"/>
+                                    <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06z"/>
+                                </svg>
+                                Hear Instructions
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="next-up">
+                    <h5>Next up:</h5>
+                    <div id="nextExerciseName">Incline Dumbbell Press</div>
+                    <div class="text-muted" id="nextExerciseDesc">3 sets x 12 reps, 20kg each</div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Completed Exercises</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush" id="completedExercises">
+                            <li class="list-group-item completed">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6>Warm-up</h6>
+                                        <small class="text-muted">5 minutes, light cardio</small>
+                                    </div>
+                                    <div>✓</div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bottom-controls">
+        <div class="row">
+            <div class="col-6">
+                <button class="btn btn-success control-btn" id="completeBtn">Complete Exercise</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-primary control-btn" id="nextBtn">Skip to Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/workout.js"></script>
+</body>
+</html>

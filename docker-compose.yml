@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  db:
+    image: docker.io/library/postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=fitness
+      - POSTGRES_USER=fitness
+      - POSTGRES_DB=fitness_tracker
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://fitness:fitness@db:5432/fitness_tracker
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
