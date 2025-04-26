@@ -77,7 +77,7 @@ class ExerciseLog(BaseModel):
     notes: Optional[str] = None
 
 class WorkoutLog(BaseModel):
-    date: date = date.today()
+    date: datetime = date.today()
     name: str
     duration: int  # in minutes
     calories_burned: Optional[int] = None
