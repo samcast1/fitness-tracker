@@ -78,6 +78,66 @@ document.addEventListener('DOMContentLoaded', function() {
         timerDisplay.textContent = `${hours}:${minutes}:${seconds}`;
     }
     
+    let currentWorkoutId = null;
+
+    async function startWorkoutSession() {
+        try {
+            const response = await fetch('/api/workouts/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: "Workout Session",
+                    date: new Date().toISOString(),
+                })
+            });
+            const data = await response.json();
+            currentWorkoutId = data.workout_id;
+        } catch (error) {
+            console.error('Error starting workout:', error);
+        }
+    }
+
+    async function logExercise(exerciseData) {
+        if (!currentWorkoutId) return;
+        
+        try {
+            await fetch(`/api/workouts/${currentWorkoutId}/exercises/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    workout_id: currentWorkoutId,
+                    ...exerciseData
+                })
+            });
+        } catch (error) {
+            console.error('Error logging exercise:', error);
+        }
+    }
+
+    async function endWorkoutSession() {
+        if (!currentWorkoutId) return;
+        
+        try {
+            await fetch(`/api/workouts/${currentWorkoutId}/end`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    duration: Math.floor(elapsedTime / (1000 * 60)), // Convert ms to minutes
+                    calories_burned: estimateCaloriesBurned(),
+                    notes: "Completed workout"
+                })
+            });
+            window.location.href = '/';
+        } catch (error) {
+            console.error('Error ending workout:', error);
+        }
+    }
     // Exercise functions
     function updateExerciseDisplay() {
         if (currentExerciseIndex < workoutPlan.length) {
@@ -160,6 +220,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Here you would send this data to your API
     }
     
+    function estimateCaloriesBurned() {
+        // Basic estimation - you can make this more sophisticated
+        const minutesWorkedOut = Math.floor(elapsedTime / (1000 * 60));
+        const averageCaloriesPerMinute = 5; // Adjust based on workout intensity
+        return minutesWorkedOut * averageCaloriesPerMinute;
+    }
+
     // Voice instructions
     function speakInstructions() {
         if ('speechSynthesis' in window) {
@@ -174,38 +241,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Event listeners
-    startBtn.addEventListener('click', startTimer);
-    pauseBtn.addEventListener('click', pauseTimer);
-    resumeBtn.addEventListener('click', resumeTimer);
+        // Add rep counter functionality
+        decreaseReps.addEventListener('click', function() {
+            if (reps > 0) {
+                reps--;
+                repCount.textContent = reps;
+            }
+        });
     
-    increaseReps.addEventListener('click', function() {
-        reps++;
-        repCount.textContent = reps;
-    });
-    
-    decreaseReps.addEventListener('click', function() {
-        if (reps > 0) {
-            reps--;
+        increaseReps.addEventListener('click', function() {
+            reps++;
             repCount.textContent = reps;
-        }
+        });
+
+    // Event listeners
+    startBtn.addEventListener('click', async function() {
+        await startWorkoutSession();
+        startTimer();
+    });
+
+    pauseBtn.addEventListener('click', function() {
+        pauseTimer();
+    });
+
+    resumeBtn.addEventListener('click', function() {
+        resumeTimer();
     });
     
-    completeBtn.addEventListener('click', completeCurrentExercise);
-    
-    nextBtn.addEventListener('click', function() {
-        if (confirm('Skip this exercise?')) {
-            currentSet = 1;
-            currentExerciseIndex++;
-            updateExerciseDisplay();
-        }
+    completeBtn.addEventListener('click', async function() {
+        const exerciseData = {
+            name: workoutPlan[currentExerciseIndex].name,
+            sets: currentSet,
+            reps: reps,
+            weight: parseFloat(document.getElementById('weightInput').value)
+        };
+        await logExercise(exerciseData);
+        completeCurrentExercise();
     });
     
-    endWorkoutBtn.addEventListener('click', function() {
+    endWorkoutBtn.addEventListener('click', async function() {
         if (confirm('End this workout session?')) {
-            // Log workout completion to server
             clearInterval(timerInterval);
-            window.location.href = '/';
+            await endWorkoutSession();
         }
     });
     
