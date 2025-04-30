@@ -166,6 +166,63 @@ async def get_workouts(db: Session = Depends(get_db)):
     workouts = db.query(Workout).order_by(Workout.date.desc()).all()
     return workouts
 
+@app.post("/api/workouts/{workout_id}/exercises/")
+async def log_exercise(
+    workout_id: int,
+    exercise: ExerciseLog,
+    db: Session = Depends(get_db)
+):
+    """Log a single exercise during a workout"""
+    db_exercise = Exercise(
+        workout_id=workout_id,
+        name=exercise.name,
+        sets=exercise.sets,
+        reps=exercise.reps,
+        weight=exercise.weight,
+        duration=exercise.duration,
+        notes=exercise.notes
+    )
+    db.add(db_exercise)
+    db.commit()
+    return {"status": "exercise logged"}
+
+@app.post("/api/workouts/start")
+async def start_workout(
+    workout: WorkoutLog,
+    db: Session = Depends(get_db)
+):
+    """Start a new workout session"""
+    db_workout = Workout(
+        date=workout.date,
+        name=workout.name,
+        duration=0,  # Will be updated when workout ends
+        calories_burned=0  # Will be updated when workout ends
+    )
+    db.add(db_workout)
+    db.commit()
+    db.refresh(db_workout)
+    return {"workout_id": db_workout.id}
+
+@app.put("/api/workouts/{workout_id}/end")
+async def end_workout(
+    workout_id: int,
+    workout: WorkoutLog,
+    db: Session = Depends(get_db)
+):
+    """End a workout session and update final stats"""
+    db_workout = db.query(Workout).filter(Workout.id == workout_id).first()
+    if not db_workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+    
+    db_workout.duration = workout.duration
+    db_workout.calories_burned = workout.calories_burned
+    db_workout.notes = workout.notes
+    
+    db.commit()
+    return {"status": "workout completed"}
+
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
