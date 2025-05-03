@@ -23,14 +23,58 @@ document.addEventListener('DOMContentLoaded', function() {
     // Rep counter
     let reps = 0;
     
-    // Example workout data - this would come from your API
-    const workoutPlan = [
-        { name: "Bench Press", description: "3 sets x 10 reps, 60kg", sets: 3, reps: 10, weight: 60 },
-        { name: "Incline Dumbbell Press", description: "3 sets x 12 reps, 20kg each", sets: 3, reps: 12, weight: 20 },
-        { name: "Push-ups", description: "3 sets to failure", sets: 3, reps: "max", weight: 0 },
-        { name: "Tricep Dips", description: "3 sets x 15 reps", sets: 3, reps: 15, weight: 0 },
-        { name: "Lateral Raises", description: "3 sets x 12 reps, 10kg each", sets: 3, reps: 12, weight: 10 }
-    ];
+    let workoutPlan = [];
+    try {
+        const savedExercises = localStorage.getItem('workoutExercises');
+        if (savedExercises) {
+            const parsedExercises = JSON.parse(savedExercises);
+            console.log('Loaded exercises:', parsedExercises); // Debug log
+            
+            if (Array.isArray(parsedExercises) && parsedExercises.length > 0) {
+                workoutPlan = parsedExercises.map(exercise => {
+                    // Add debug log
+                    console.log('Processing exercise:', exercise);
+                    
+                    if (exercise.type === 'strength') {
+                        return {
+                            name: exercise.name,
+                            description: `3 sets x 10 reps`,
+                            sets: 3,
+                            reps: 10,
+                            weight: 0,
+                            type: 'strength'
+                        };
+                    } else if (exercise.type === 'conditioning') {
+                        return {
+                            name: exercise.name,
+                            description: 'Enter distance',
+                            type: 'conditioning',
+                            distance: 0
+                        };
+                    }
+                    return null; // Handle unknown exercise types
+                }).filter(exercise => exercise !== null); // Remove any null entries
+                
+                // Debug log
+                console.log('Processed workout plan:', workoutPlan);
+                
+                // If workout plan is empty after processing, redirect
+                if (workoutPlan.length === 0) {
+                    console.error('No valid exercises found in saved data');
+                    window.location.href = '/new-workout';
+                }
+            } else {
+                console.error('Saved exercises is not an array or is empty');
+                window.location.href = '/new-workout';
+            }
+        } else {
+            console.error('No saved exercises found');
+            window.location.href = '/new-workout';
+        }
+    } catch (error) {
+        console.error('Error loading workout plan:', error);
+        window.location.href = '/new-workout';
+    }
     
     let currentExerciseIndex = 0;
     let currentSet = 1;
@@ -143,26 +187,37 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentExerciseIndex < workoutPlan.length) {
             const currentExercise = workoutPlan[currentExerciseIndex];
             document.getElementById('currentExerciseName').textContent = currentExercise.name;
-            document.getElementById('currentExerciseDesc').textContent = currentExercise.description;
-            document.getElementById('setInput').value = currentSet;
-            
-            // Update weight input
-            if (currentExercise.weight > 0) {
+
+            // Handle different exercise types
+            if (currentExercise.type === 'strength') {
+                // Show strength training inputs
+                document.getElementById('strengthInputs').style.display = 'block';
+                document.getElementById('conditioningInputs').style.display = 'none';
+                document.getElementById('currentExerciseDesc').textContent = 
+                    `Set ${currentSet} of ${currentExercise.sets}`;
+                
+                // Update weight input
                 document.getElementById('weightInput').value = currentExercise.weight;
-                document.getElementById('weightInput').parentElement.style.display = 'flex';
-            } else {
-                document.getElementById('weightInput').parentElement.style.display = 'none';
+                
+                // Reset rep counter
+                reps = 0;
+                repCount.textContent = reps;
+            } else if (currentExercise.type === 'conditioning') {
+                // Show conditioning inputs
+                document.getElementById('strengthInputs').style.display = 'none';
+                document.getElementById('conditioningInputs').style.display = 'block';
+                document.getElementById('currentExerciseDesc').textContent = 
+                    'Enter distance after completion';
             }
-            
-            // Reset rep counter
-            reps = 0;
-            repCount.textContent = reps;
-            
-            // Update next exercise
+
+            // Update next exercise display
             if (currentExerciseIndex + 1 < workoutPlan.length) {
                 const nextExercise = workoutPlan[currentExerciseIndex + 1];
                 document.getElementById('nextExerciseName').textContent = nextExercise.name;
-                document.getElementById('nextExerciseDesc').textContent = nextExercise.description;
+                document.getElementById('nextExerciseDesc').textContent = 
+                    nextExercise.type === 'strength' ? 
+                    `${nextExercise.sets} sets x ${nextExercise.reps} reps` : 
+                    'Conditioning';
                 document.querySelector('.next-up').style.display = 'block';
             } else {
                 document.querySelector('.next-up').style.display = 'none';
@@ -170,54 +225,71 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Workout completed
             alert('Workout completed! Great job!');
+            localStorage.removeItem('workoutExercises'); // Clear the saved workout
             window.location.href = '/';
         }
     }
     
-    function completeCurrentExercise() {
+    async function completeCurrentExercise() {
         const currentExercise = workoutPlan[currentExerciseIndex];
-        const weight = document.getElementById('weightInput').value;
-        
-        // If we've completed all sets, move to next exercise
-        if (currentSet >= currentExercise.sets) {
-            // Add to completed exercises
-            const completedExercisesList = document.getElementById('completedExercises');
-            const listItem = document.createElement('li');
-            listItem.className = 'list-group-item completed';
-            listItem.innerHTML = `
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6>${currentExercise.name}</h6>
-                        <small class="text-muted">${currentExercise.sets} sets completed, ${weight}kg</small>
-                    </div>
-                    <div>✓</div>
-                </div>
-            `;
-            completedExercisesList.appendChild(listItem);
+        let exerciseData;
+
+        if (currentExercise.type === 'strength') {
+            const weight = document.getElementById('weightInput').value;
             
-            // Reset set counter and move to next exercise
-            currentSet = 1;
+            if (currentSet >= currentExercise.sets) {
+                // Complete exercise logic for strength training
+                addToCompletedList(currentExercise, weight);
+                currentSet = 1;
+                currentExerciseIndex++;
+            } else {
+                currentSet++;
+            }
+
+            exerciseData = {
+                name: currentExercise.name,
+                type: 'strength',
+                set: currentSet - 1,
+                reps: reps,
+                weight: parseFloat(weight)
+            };
+        } else if (currentExercise.type === 'conditioning') {
+            const distance = document.getElementById('distanceInput').value;
+            
+            addToCompletedList(currentExercise, null, distance);
             currentExerciseIndex++;
-            updateExerciseDisplay();
-        } else {
-            // Move to next set
-            currentSet++;
-            document.getElementById('setInput').value = currentSet;
-            
-            // Reset rep counter
-            reps = 0;
-            repCount.textContent = reps;
+
+            exerciseData = {
+                name: currentExercise.name,
+                type: 'conditioning',
+                distance: parseFloat(distance)
+            };
         }
-        
-        // Log this to the server
-        const exerciseData = {
-            name: currentExercise.name,
-            set: currentSet - 1,  // We've already incremented, so subtract 1
-            reps: reps,
-            weight: parseFloat(weight)
-        };
-        console.log('Logging exercise data:', exerciseData);
-        // Here you would send this data to your API
+
+        await logExercise(exerciseData);
+        updateExerciseDisplay();
+    }
+
+    // Helper function to add completed exercise to the list
+    function addToCompletedList(exercise, weight = null, distance = null) {
+        const completedExercisesList = document.getElementById('completedExercises');
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item completed';
+
+        const details = exercise.type === 'strength' ?
+            `${exercise.sets} sets completed, ${weight}kg` :
+            `Distance: ${distance}km`;
+
+        listItem.innerHTML = `
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6>${exercise.name}</h6>
+                    <small class="text-muted">${details}</small>
+                </div>
+                <div>✓</div>
+            </div>
+        `;
+        completedExercisesList.appendChild(listItem);
     }
     
     function estimateCaloriesBurned() {
@@ -301,3 +373,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.touches.length > 1) e.preventDefault();
     }, { passive: false });
 });
+
+    document.getElementById('startWorkoutBtn').addEventListener('click', function() {
+        console.log('Saving exercises:', selectedExercises); // Debug log
+        localStorage.setItem('workoutExercises', JSON.stringify(selectedExercises));
+        console.log('Saved to localStorage:', localStorage.getItem('workoutExercises')); // Verify save
+        window.location.href = '/workout';
+    });
+
