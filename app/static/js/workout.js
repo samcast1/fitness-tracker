@@ -126,20 +126,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function startWorkoutSession() {
         try {
+            const workoutData = {
+                date: new Date().toISOString().split('T')[0],
+                name: "Workout Session",
+                duration: 0,
+                calories_burned: 0,
+                exercises: []
+            };
+
             const response = await fetch('/api/workouts/start', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    name: "Workout Session",
-                    date: new Date().toISOString(),
-                })
+                body: JSON.stringify(workoutData)
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Server error:', errorData);
+                throw new Error(`Failed to start workout sessions: ${response.status}`);
+            }
+
             const data = await response.json();
             currentWorkoutId = data.workout_id;
         } catch (error) {
             console.error('Error starting workout:', error);
+            alert('Failed to start workout session. Please try again.');
         }
     }
 
