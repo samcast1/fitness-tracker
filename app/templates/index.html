@@ -109,9 +109,9 @@
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ workout.name }}</h6>
                                     <small>
-                                        {% if workout.date.date() == today.date() %}
+                                        {% if workout.date == today.date() %}
                                             Today
-                                        {% elif workout.date.date() == (today.date() - timedelta(days=1)) %}
+                                        {% elif workout.date == (today.date() - timedelta(days=1)) %}
                                             Yesterday
                                         {% else %}
                                             {{ workout.date.strftime('%Y-%m-%d') }}
