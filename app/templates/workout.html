@@ -156,13 +156,23 @@
                     <div class="card-body">
                         <h3 id="currentExerciseName">Bench Press</h3>
                         <p class="text-muted" id="currentExerciseDesc">3 sets x 10 reps, 60kg</p>
-                        
-                        <div class="rep-counter">
-                            <button class="btn btn-outline-primary rep-btn" id="decreaseReps">-</button>
-                            <div class="rep-count" id="repCount">0</div>
-                            <button class="btn btn-primary rep-btn" id="increaseReps">+</button>
+                        <div id="strengthInputs" style="display: none;">
+                            <div class="mb-3">
+                                <label for="weightInput" class="form-label">Weight (kg)</label>
+                                <input type="number" class="form-control" id="weightInput" value="0" min="0" step="0.5">
+                            </div>
+                            <div class="rep-counter mb-3">
+                                <button class="btn btn-outline-primary rep-btn" id="decreaseReps">-</button>
+                                <div class="rep-count" id="repCount">0</div>
+                                <button class="btn btn-primary rep-btn" id="increaseReps">+</button>
+                            </div>
                         </div>
-                        
+                        <div id="conditioningInputs" style="display: none;">
+                            <div class="mb-3">
+                                <label for="distanceInput" class="form-label">Distance (km)</label>
+                                <input type="number" class="form-control" id="distanceInput" value="0" min="0" step="0.01">
+                            </div>
+                        </div>
                         <div class="d-flex justify-content-between mt-3">
                             <div>
                                 <label class="form-label">Weight</label>
