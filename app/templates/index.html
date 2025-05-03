@@ -73,25 +73,25 @@
             <div class="col-md-3">
                 <div class="card stats-card">
                     <h3>Workouts This Week</h3>
-                    <p>5</p>
+                    <p>{{ stats.workout_count }}</p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stats-card">
                     <h3>Active Minutes</h3>
-                    <p>320</p>
+                    <p>{{ stats.active_minutes }}</p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stats-card">
                     <h3>Calories Burned</h3>
-                    <p>2,450</p>
+                    <p>{{ stats.calories_burned }}</p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stats-card">
                     <h3>Avg. Sleep</h3>
-                    <p>7.5h</p>
+                    <p>Coming Soon</p>
                 </div>
             </div>
         </div>
@@ -104,13 +104,27 @@
                     </div>
                     <div class="card-body">
                         <div class="list-group">
+                            {% for workout in stats.recent_workouts %}
                             <a href="#" class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">Upper Body Strength</h6>
-                                    <small>Today</small>
+                                    <h6 class="mb-1">{{ workout.name }}</h6>
+                                    <small>
+                                        {% if workout.date.date() == today.date() %}
+                                            Today
+                                        {% elif workout.date.date() == (today.date() - timedelta(days=1)) %}
+                                            Yesterday
+                                        {% else %}
+                                            {{ workout.date.strftime('%Y-%m-%d') }}
+                                        {% endif %}
+                                    </small>
                                 </div>
-                                <p class="mb-1">45 minutes · High intensity</p>
+                                <p class="mb-1">{{ workout.duration }} minutes
+                                    {% if workout.calories_burned %}
+                                        · {{ workout.calories_burned }} calories
+                                    {% endif %}
+                                </p>
                             </a>
+                            {% endfor %}
                             <a href="#" class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">Running</h6>
@@ -128,7 +142,7 @@
                         </div>
                     </div>
                     <div class="card-footer">
-                        <a href="/workout" class="btn btn-primary">Start New Workout</a>
+                        <a href="/new-workout" class="btn btn-primary">Start New Workout</a>
                         <a href="#" class="btn btn-outline-secondary">Log Past Workout</a>
                     </div>
                 </div>
