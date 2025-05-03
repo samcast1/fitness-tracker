@@ -2,10 +2,10 @@ from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, ForeignKey, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pydantic import BaseModel
 from typing import List, Optional
 import os
@@ -40,6 +40,7 @@ for attempt in range(MAX_RETRIES):
         else:
             logger.error("Max retries reached. Could not connect to database.")
             # We'll continue and let the app start, but database operations will fail
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -109,9 +110,70 @@ except Exception as e:
     os.makedirs("app/templates", exist_ok=True)
     templates = Jinja2Templates(directory="app/templates")
 
+AVAILABLE_EXERCISES = {
+    "strength": [
+        {"id": "bench", "name": "Bench Press", "type": "strength", "needs_reps": True},
+        {"id": "squat", "name": "Squat", "type": "strength", "needs_reps": True},
+        {"id": "deadlift", "name": "Deadlift", "type": "strength", "needs_reps": True},
+        {"id": "barbell_row", "name": "Barbell Row", "type": "strength", "needs_reps": True},
+        {"id": "pullup", "name": "Pull-up", "type": "strength", "needs_reps": True},
+        {"id": "pushup", "name": "Push-up", "type": "strength", "needs_reps": True},
+        {"id": "body_squat", "name": "Bodyweight Squat", "type": "strength", "needs_reps": True}
+    ],
+    "conditioning": [
+        {"id": "run", "name": "Running", "type": "conditioning", "needs_distance": True}
+    ]
+}
+
+async def get_weekly_stats(db: Session):
+    """Get workout statistics for the past week"""
+    week_ago = datetime.now() - timedelta(days=7)
+    
+    # Get workout count
+    workout_count = db.query(Workout).filter(
+        Workout.date >= week_ago
+    ).count()
+    
+    # Get total active minutes
+    active_minutes = db.query(func.sum(Workout.duration)).filter(
+        Workout.date >= week_ago
+    ).scalar() or 0
+    
+    # Get total calories burned
+    calories_burned = db.query(func.sum(Workout.calories_burned)).filter(
+        Workout.date >= week_ago
+    ).scalar() or 0
+    
+    # Get recent workouts
+    recent_workouts = db.query(Workout).order_by(
+        Workout.date.desc()
+    ).limit(3).all()
+    
+    return {
+        "workout_count": workout_count,
+        "active_minutes": active_minutes,
+        "calories_burned": calories_burned,
+        "recent_workouts": recent_workouts
+    }
+
+
+@app.get("/api/exercises/available")
+async def get_available_exercises():
+    """Get list of available exercises"""
+    return AVAILABLE_EXERCISES
+
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "title": "Fitness Tracker"})
+async def home(request: Request, db: Session = Depends(get_db)):
+    stats = await get_weekly_stats(db)
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "title": "Fitness Tracker",
+        "stats": stats,
+        "today": datetime.now(),
+        "datetime": datetime,
+        "timedelta": timedelta,
+    })
 
 @app.get("/api/health")
 async def health_check():
@@ -222,6 +284,10 @@ async def end_workout(
     return {"status": "workout completed"}
 
 
+@app.get("/new-workout", response_class=HTMLResponse)
+async def new_workout_page(request: Request):
+    """Render the new workout page"""
+    return templates.TemplateResponse("new_workout.html", {"request": request, "title": "New Workout"})
 
 if __name__ == "__main__":
     import uvicorn
